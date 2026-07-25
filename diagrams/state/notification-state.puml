@@ -1,7 +1,0 @@
-@startuml
-[*] --> PENDING : событие опубликовано в шину
-PENDING --> SENT : Notification Service отправил успешно
-PENDING --> FAILED : провайдер вернул ошибку
-SENT --> [*]
-FAILED --> [*]
-@enduml

@@ -1,0 +1,23 @@
+@startuml C4_Context_Онбординг
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+title Диаграмма контекста — Онбординг клиента банка
+scale 2
+
+Person_Ext(Client, "Клиент", "Физическое лицо, желающее открыть счёт")
+Person(Admin, "Администратор", "Обрабатывает заявку в ручном режиме")
+
+System(Onboarding, "Onboarding Service", "Принимает заявки, проводит валидацию, передает в KYC")
+System_Ext(KYC, "KYC system", "Внешняя система оценки личности и проверки рисков")
+System(Core_Banking, "Core Banking", "Центральная система учёта счетов, балансов и транзакций банка")
+System(Notification_service, "Notification Service", "Отправка push/email/sms клиенту")
+
+Rel(Client, Onboarding, "Подаёт заявку")
+Rel(Admin, Onboarding, "Просматривает заявку, выносит решение\n(approve/reject) при MANUAL_REVIEW")
+Rel(Onboarding, KYC, "Заявка прошла валидацию, отправляется в KYC")
+Rel(KYC, Onboarding, "Возвращает вердикт проверки\n(approved/rejected/manual_review)")
+Rel(Onboarding, Core_Banking, "Заявка одобрена, инициирует\nсоздание счёта")
+Rel(Onboarding, Notification_service, "Инициирует уведомление клиента\nо статусе заявки (одобрение/отказ)")
+Rel(Notification_service, Client, "Отправляет push/email/sms")
+
+SHOW_LEGEND()
+@enduml

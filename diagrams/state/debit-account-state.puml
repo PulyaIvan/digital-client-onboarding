@@ -1,7 +1,0 @@
-@startuml
-[*] --> ACTIVE : счёт создан после одобрения заявки
-ACTIVE --> BLOCKED : клиент запросил блокировку / fraud-detection
-BLOCKED --> ACTIVE : разблокировка (вне MVP)
-ACTIVE --> CLOSED : клиент закрыл счёт
-CLOSED --> [*]
-@enduml

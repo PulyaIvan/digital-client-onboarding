@@ -1,0 +1,33 @@
+@startuml Онбординг клиента — reject path
+title Reject path (продолжение happy path с момента ответа KYC)
+scale 2
+
+participant "Onboarding\nService" as svc
+database "Onboarding DB" as db_svc
+participant "KYC\n(внешний)" as kyc
+queue "Kafka" as bm
+participant "Notification\nService" as ns
+database "Notification DB\n(Notification)" as db_ns
+
+note over kyc, svc
+  Продолжение happy path:
+  клиент уже получил 202 Accepted,
+  status=KYC_PENDING
+end note
+
+kyc -> bm: publish "VERIFICATION_COMPLETED"\n{applicationId, verdict=rejected}
+bm ->> svc: consume "VERIFICATION_COMPLETED"
+activate svc
+svc -> db_svc: INSERT KYC_Result (verdict=rejected, reason_code)
+svc -> db_svc: UPDATE Application status=KYC_REJECTED
+svc -> bm: publish event "KYC_REJECTED"\n{applicationId}
+deactivate svc
+
+bm ->> ns: consume "KYC_REJECTED"
+activate ns
+ns -> db_ns: INSERT Notification\n(status=PENDING)
+ns -> ns: отправка push/email/sms
+ns -> db_ns: UPDATE Notification status=SENT
+deactivate ns
+
+@enduml
