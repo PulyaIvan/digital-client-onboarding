@@ -27,13 +27,13 @@
       {
         "name": "application_history",
         "schemaName": "public",
-        "x": 1520,
-        "y": -104
+        "x": 1544,
+        "y": -304
       },
       {
         "name": "kyc_result",
         "schemaName": "public",
-        "x": 1064,
+        "x": 1017.6429275187693,
         "y": -640
       },
       {
