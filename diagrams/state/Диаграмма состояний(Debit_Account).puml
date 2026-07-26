@@ -1,5 +1,5 @@
 @startuml Диаграмма состояний(Debit_account)
-title Диаграмма состояний
+title Диаграмма состояний(Debit_account)
 scale 2
 [*] --> ACTIVE: Счёт создан после\nодобрения заявки
 ACTIVE --> BLOCKED: Клиент запросил блокировку /\nсработала fraud-detection система

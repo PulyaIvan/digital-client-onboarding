@@ -1,5 +1,5 @@
 @startuml Диаграмма состояний(Application)
-title Диаграмма состояний
+title Диаграмма состояний(Application)
 scale 1.5
 [*] --> CREATED: Заявка прошла\nвалидацию 
 CREATED --> KYC_PENDING: Заявка отправленна в KYC
