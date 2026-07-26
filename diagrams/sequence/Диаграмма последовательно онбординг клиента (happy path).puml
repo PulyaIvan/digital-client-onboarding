@@ -4,7 +4,7 @@ scale 2
 
 actor Client as cl
 participant "Onboarding\nService" as svc
-database "Onboarding DB\n(Applicant, Application,\nKYC_Result)" as db_svc
+database "Onboarding DB\n(Applicant, Application,\nApplicant_documents, Applicant_sensitive_data,\nKYC_Result)" as db_svc
 participant "KYC\n(внешний)" as kyc
 queue "Kafka" as bm
 participant "Core Banking" as bk
@@ -16,8 +16,10 @@ cl -> svc: POST /application (данные заявки)
 activate svc
 svc -> svc: валидация полей
 svc -> db_svc: INSERT Applicant
+svc -> db_svc: INSERT Applicant_sensitive_data\n(encrypted)
+svc -> db_svc: INSERT Applicant_documents\n(storage_ref, masked_value)
 svc -> db_svc: INSERT Application (status=CREATED)
-svc ->> bm: publish event "VERIFY_REQUESTED"\n{applicationId, applicant data}
+svc ->> bm: publish event "VERIFY_REQUESTED"\n{applicationId, applicant data, document refs}
 svc -> db_svc: UPDATE Application (status=KYC_PENDING)
 svc --> cl: 202 Accepted\nstatus=KYC_PENDING
 deactivate svc

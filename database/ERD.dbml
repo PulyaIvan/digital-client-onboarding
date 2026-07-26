@@ -1,0 +1,80 @@
+Table applicant {
+  applicant_id int [pk, increment]
+  first_name varchar(50)
+  middle_name varchar(50)
+  last_name varchar(50)
+  email varchar(100) [unique]
+  phone_number varchar(15)
+  date_of_birth date
+  created_at timestamp 
+  updated_at timestamp 
+}
+
+Table applicant_documents {
+  applicant_documents_id int [pk, increment]
+  applicant_id int [ref: > applicant.applicant_id]
+  doc_type enum('passport', 'photo')
+  storage_ref varchar [note: 'ссылка на зашифрованное хранилище/vault']
+  masked_value varchar
+  verified boolean
+  created_at timestamp
+}
+
+Table applicant_sensitive_data {
+  applicant_sensitive_data_id int [pk, increment]
+  applicant_id int [ref: - applicant.applicant_id, unique]
+  passport_number_encrypted varchar // зашифровано
+  passport_series_encrypted varchar // зашифровано
+  registred_address_encrypted varchar // зашифровано
+  residential_address_encrypted varchar [note: 'фактический адрес проживания']
+  same_as_registration boolean [note: 'совпадает ли фактический адрес с пропиской']
+  snils_encrypted varchar // зашифровано
+  inn_encrypted varchar // зашифровано
+  created_at timestamp
+}
+
+Table application {
+  application_id int [pk, increment]
+  applicant_id int [ref: > applicant.applicant_id]
+  application_number varchar(20) [unique]
+  status enum('CREATED', 'KYC_PENDING', 'KYC_APPROVED', 'KYC_REJECTED', 'MANUAL_REVIEW', 'COMPLETED')
+  applied_at timestamp
+  updated_at timestamp
+}
+
+Table debit_account {
+  account_id int [pk, increment]
+  applicant_id int [ref: > applicant.applicant_id]
+  application_id int [ref: - application.application_id, unique]
+  account_number varchar(20) [unique]
+  balance decimal(10, 2)
+  status enum('ACTIVE', 'CLOSED', 'BLOCKED')
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table application_history {
+  history_id int [pk, increment]
+  application_id int [ref: > application.application_id]
+  status enum('CREATED', 'KYC_PENDING', 'KYC_APPROVED', 'KYC_REJECTED', 'MANUAL_REVIEW', 'COMPLETED')
+  changed_by varchar(50) [note: 'заполняется только для решений админа в MANUAL_REVIEW, для системных переходов — null']
+  changed_at timestamp
+}
+
+Table kyc_result {
+    kyc_id int [pk, increment]
+    application_id int [ref: > application.application_id]
+    result enum('approved', 'rejected', 'manual_review')
+    reason_code varchar(50)
+    checked_at timestamp
+}
+
+Table notification {
+    notification_id int [pk, increment]
+    application_id int [ref: > application.application_id]
+    message text
+    delivery_method enum('push', 'email', 'sms')
+    status enum('PENDING', 'SENT')
+    sent_at timestamp
+    updated_at timestamp
+}
