@@ -2,6 +2,6 @@
 
 | User Story | Функциональные требования | Диаграммы |
 |---|---|---|
-| US-001 | FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008 | erd/schema.dbml, sequence/*.puml, state/*.puml |
+| US-001 | FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007 | erd/schema.dbml, sequence/*.puml, state/*.puml |
 
 ## TODO — заполнить ссылками на конкретные файлы диаграмм по мере создания

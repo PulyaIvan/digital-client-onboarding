@@ -37,7 +37,7 @@ Table application {
   application_id int [pk, increment]
   applicant_id int [ref: > applicant.applicant_id]
   application_number varchar(20) [unique]
-  status enum('CREATED', 'KYC_PENDING', 'KYC_APPROVED', 'KYC_REJECTED', 'MANUAL_REVIEW', 'COMPLETED')
+  status enum('CREATED', 'PENDING', 'APPROVED', 'REJECTED', 'MANUAL_REVIEW', 'COMPLETED')
   applied_at timestamp
   updated_at timestamp
 }
@@ -56,8 +56,8 @@ Table debit_account {
 Table application_history {
   history_id int [pk, increment]
   application_id int [ref: > application.application_id]
-  status enum('CREATED', 'KYC_PENDING', 'KYC_APPROVED', 'KYC_REJECTED', 'MANUAL_REVIEW', 'COMPLETED')
-  changed_by varchar(50) [note: 'заполняется только для решений админа в MANUAL_REVIEW, для системных переходов — null']
+  status enum('CREATED', 'PENDING', 'APPROVED', 'REJECTED', 'MANUAL_REVIEW', 'COMPLETED')
+  changed_by varchar(50) [note: 'заполняется только для решений менеджера в MANUAL_REVIEW, для системных переходов — null']
   changed_at timestamp
 }
 

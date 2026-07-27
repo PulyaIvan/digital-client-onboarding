@@ -20,8 +20,8 @@ svc -> db_svc: INSERT Applicant_sensitive_data\n(encrypted)
 svc -> db_svc: INSERT Applicant_documents\n(storage_ref, masked_value)
 svc -> db_svc: INSERT Application (status=CREATED)
 svc ->> bm: publish event "VERIFY_REQUESTED"\n{applicationId, applicant data, document refs}
-svc -> db_svc: UPDATE Application (status=KYC_PENDING)
-svc --> cl: 202 Accepted\nstatus=KYC_PENDING
+svc -> db_svc: UPDATE Application (status=PENDING)
+svc --> cl: 202 Accepted\nstatus=PENDING
 deactivate svc
 
 bm ->> kyc: consume "VERIFY_REQUESTED"
@@ -33,11 +33,11 @@ deactivate kyc
 bm ->> svc: consume "VERIFICATION_COMPLETED"
 activate svc
 svc -> db_svc: INSERT KYC_Result (verdict, reason_code, ...)
-svc -> db_svc: UPDATE Application status=KYC_APPROVED
-svc -> bm: publish event "KYC_APPROVED"\n{applicationId}
+svc -> db_svc: UPDATE Application status=APPROVED
+svc -> bm: publish event "APPROVED"\n{applicationId}
 deactivate svc
 
-bm ->> bk: consume "KYC_APPROVED"\n{applicationId}
+bm ->> bk: consume "APPROVED"\n{applicationId}
 activate bk
 bk -> db_bk: INSERT Debit_account (status=ACTIVE)\nидемпотентно по applicationId
 bk ->> bm: publish event "ACCOUNT_CREATED"\n{applicationId}

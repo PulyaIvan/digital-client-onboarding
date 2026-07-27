@@ -6,13 +6,13 @@ participant "Onboarding\nService" as svc
 database "Onboarding DB" as db_svc
 participant "KYC\n(внешний)" as kyc
 queue "Kafka" as bm
-actor "Admin" as ad
+actor "Менеджер" as mgr
 participant "Core Banking" as bk
 
 note over svc, kyc
   Продолжение happy path:
   клиент уже получил 202 Accepted,
-  status=KYC_PENDING
+  status=PENDING
 end note
 
 kyc -> bm: publish "VERIFICATION_COMPLETED"\n{applicationId, verdict=manual_review}
@@ -22,19 +22,19 @@ svc -> db_svc: INSERT KYC_Result (verdict=manual_review, reason_code)
 svc -> db_svc: UPDATE Application status=MANUAL_REVIEW
 deactivate svc
 
-note over ad
-  Админ-интерфейс — вне скоупа MVP,
+note over mgr
+  Интерфейс менеджера — вне скоупа MVP,
   показан только как источник решения
 end note
 
-ad -> svc: POST /application/{id}/approve\n{changed_by: adminId}
+mgr -> svc: POST /application/{id}/approve\n{changed_by: managerId}
 activate svc
-svc -> db_svc: INSERT Application_history\n(changed_by=adminId)
-svc -> db_svc: UPDATE Application status=KYC_APPROVED
-svc -> bm: publish "KYC_APPROVED"\n{applicationId}
+svc -> db_svc: INSERT Application_history\n(changed_by=managerId)
+svc -> db_svc: UPDATE Application status=APPROVED
+svc -> bm: publish "APPROVED"\n{applicationId}
 deactivate svc
 
-bm ->> bk: consume "KYC_APPROVED"
+bm ->> bk: consume "APPROVED"
 note over bk
   далее — идентично happy path:
   создание счёта, ACCOUNT_CREATED,

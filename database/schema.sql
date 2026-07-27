@@ -1,6 +1,6 @@
 CREATE TYPE "doc_type_enum" AS ENUM ('passport', 'photo');
 
-CREATE TYPE "application_status_enum" AS ENUM ('CREATED', 'KYC_PENDING', 'KYC_APPROVED', 'KYC_REJECTED', 'MANUAL_REVIEW', 'COMPLETED');
+CREATE TYPE "application_status_enum" AS ENUM ('CREATED', 'PENDING', 'APPROVED', 'REJECTED', 'MANUAL_REVIEW', 'COMPLETED');
 
 CREATE TYPE "debit_account_status_enum" AS ENUM ('ACTIVE', 'CLOSED', 'BLOCKED');
 
@@ -97,7 +97,7 @@ COMMENT ON COLUMN "applicant_sensitive_data"."residential_address_encrypted" IS 
 
 COMMENT ON COLUMN "applicant_sensitive_data"."same_as_registration" IS 'совпадает ли фактический адрес с пропиской';
 
-COMMENT ON COLUMN "application_history"."changed_by" IS 'заполняется только для решений админа в MANUAL_REVIEW, для системных переходов — null';
+COMMENT ON COLUMN "application_history"."changed_by" IS 'заполняется только для решений менеджера в MANUAL_REVIEW, для системных переходов — null';
 
 ALTER TABLE "applicant_documents" ADD FOREIGN KEY ("applicant_id") REFERENCES "applicant" ("applicant_id") DEFERRABLE INITIALLY IMMEDIATE;
 

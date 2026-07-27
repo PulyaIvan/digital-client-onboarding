@@ -1,0 +1,250 @@
+openapi: 3.1.0
+info:
+  title: Digital client onboarding API
+  description: API for onboarding digital clients
+  version: 1.0.0
+servers:
+  - url: https://api.example.com
+    description: Production server
+tags:
+  - name: Onboarding
+    description: Operations related to client onboarding
+paths:
+  /application:
+    post:
+      tags:
+        - Onboarding
+      operationId: postApplication
+      summary: Подача заявки на открытие счета
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/ApplicationCreateRequest"
+      responses:
+        "202":
+          description: Заявка успешно принята. Обработка заявки может занять некоторое время.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/202ApplicationResponse"
+        "400":
+          description: Невалидные данные в запросе. Проверьте правильность заполнения полей.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Конфликт. Заявка с такими данными уже существует.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Внутренняя ошибка сервера.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Сервис недоступен.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /application/{applicationId}/status:
+    get:
+      tags:
+        - Onboarding
+      operationId: getApplicationStatus
+      summary: Получить текущий статус заявки
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Текущий статус заявки.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationStatusResponse"
+        "404":
+          description: Заявка с указанным идентификатором не найдена.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /application/{applicationId}/approve:
+    post:
+      tags:
+        - Onboarding
+      operationId: approveApplication
+      summary: Решение менеджера по заявке в статусе MANUAL_REVIEW
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplicationApproveRequest"
+      responses:
+        "200":
+          description: Решение принято, статус заявки обновлён на APPROVED.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationStatusResponse"
+        "404":
+          description: Заявка с указанным идентификатором не найдена.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Заявка не находится в статусе MANUAL_REVIEW.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  schemas:
+    ApplicationCreateRequest:
+      type: object
+      required:
+        - firstName
+        - lastName
+        - email
+        - phoneNumber
+        - dateOfBirth
+        - passportSeries
+        - passportNumber
+        - registrationAddress
+        - residentialAddress
+        - snils
+        - inn
+        - passportScan
+        - photoApplicant
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 50
+        middleName:
+          type: string
+          minLength: 1
+          maxLength: 50
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 50
+        email:
+          type: string
+          format: email
+          maxLength: 100
+        phoneNumber:
+          type: string
+          pattern: '^\+7\d{10}$'
+          description: "Номер телефона в формате E.164 (например, +79161234567)"
+        dateOfBirth:
+          type: string
+          format: date
+          description: "Клиент должен быть совершеннолетним — проверяется на уровне бизнес-логики"
+        passportSeries:
+          type: string
+          pattern: '^\d{4}$'
+        passportNumber:
+          type: string
+          pattern: '^\d{6}$'
+        registrationAddress:
+          type: string
+          minLength: 1
+          maxLength: 200
+        residentialAddress:
+          type: string
+          minLength: 1
+          maxLength: 200
+        snils:
+          type: string
+          pattern: '^\d{11}$'
+        inn:
+          type: string
+          pattern: '^\d{12}$'
+        passportScan:
+          type: string
+          format: binary
+          description: "Скан паспорта (JPEG/PNG/PDF, максимум 10MB)"
+        photoApplicant:
+          type: string
+          format: binary
+          description: "Фотография клиента (JPEG/PNG, максимум 10MB)"
+
+    202ApplicationResponse:
+      type: object
+      properties:
+        applicationId:
+          type: integer
+          format: int64
+          description: Уникальный идентификатор заявки на открытие счета
+        message:
+          type: string
+          description: Сообщение о том, что заявка принята и находится в обработке
+        status:
+          type: string
+          enum: [CREATED, PENDING, APPROVED, REJECTED, MANUAL_REVIEW, COMPLETED]
+          description: Текущий статус заявки
+
+    ApplicationStatusResponse:
+      type: object
+      properties:
+        applicationId:
+          type: integer
+          format: int64
+          description: Уникальный идентификатор заявки на открытие счета
+        status:
+          type: string
+          enum: [CREATED, PENDING, APPROVED, REJECTED, MANUAL_REVIEW, COMPLETED]
+          description: Текущий статус заявки
+
+    ApplicationApproveRequest:
+      type: object
+      required:
+        - changedBy
+      properties:
+        changedBy:
+          type: string
+          description: Идентификатор менеджера, принявшего решение
+
+    ErrorResponse:
+      type: object
+      required:
+        - errorCode
+        - errorMessage
+        - timestamp
+        - requestId
+      properties:
+        errorCode:
+          type: string
+          description: Код ошибки, указывающий на тип проблемы
+        errorMessage:
+          type: string
+          description: Подробное описание ошибки
+        timestamp:
+          type: string
+          format: date-time
+          description: Время возникновения ошибки в формате
+        requestId:
+          type: string
+          description: Уникальный идентификатор запроса, полезный для трассировки и отладки
