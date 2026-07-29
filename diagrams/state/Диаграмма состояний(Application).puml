@@ -1,14 +1,19 @@
 @startuml Диаграмма состояний(Application)
 title Диаграмма состояний(Application)
 scale 2
-[*] --> CREATED: Заявка прошла\nвалидацию 
+[*] --> CREATED: Заявка прошла\nвалидацию
 CREATED --> PENDING: Заявка отправленна в KYC
 PENDING --> APPROVED: Заявка прошла\nпроверку успешно
 PENDING --> REJECTED: Заявка не прошла\nпроверку KYC
 PENDING --> MANUAL_REVIEW: Заявка передана на\nручное рассмотрение
+PENDING --> ADDITIONAL_INFO_REQUIRED: Автопроверка нашла\nустранимую проблему
 APPROVED --> COMPLETED: Core Banking подтвердил\nсоздание счёта
-MANUAL_REVIEW --> COMPLETED: Заявка прошла\nручную проверку успешно
+MANUAL_REVIEW --> APPROVED: Заявка прошла\nручную проверку успешно
 MANUAL_REVIEW --> REJECTED: Заявка не прошла\nручную проверку
+MANUAL_REVIEW --> ADDITIONAL_INFO_REQUIRED: Менеджер запросил\nдоп. данные/документы
+ADDITIONAL_INFO_REQUIRED --> PENDING: Клиент донёс данные\nв срок
+ADDITIONAL_INFO_REQUIRED --> EXPIRED: Истёк\nadditional_info_deadline
 COMPLETED --> [*]
 REJECTED --> [*]
+EXPIRED --> [*]
 @enduml

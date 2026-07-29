@@ -9,6 +9,7 @@ servers:
 tags:
   - name: Onboarding
     description: Operations related to client onboarding
+
 paths:
   /application:
     post:
@@ -16,6 +17,8 @@ paths:
         - Onboarding
       operationId: postApplication
       summary: Подача заявки на открытие счета
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -24,11 +27,14 @@ paths:
               $ref: "#/components/schemas/ApplicationCreateRequest"
       responses:
         "202":
-          description: Заявка успешно принята. Обработка заявки может занять некоторое время.
+          description: >
+            Заявка успешно принята. Обработка заявки может занять некоторое время.
+            Ответ содержит accessToken — сохраните его: он выдаётся один раз и понадобится
+            для всех последующих запросов по этой заявке (проверка статуса, донесение данных/документов).
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/202ApplicationResponse"
+                $ref: "#/components/schemas/ApplicationCreateResponse"
         "400":
           description: Невалидные данные в запросе. Проверьте правильность заполнения полей.
           content:
@@ -36,7 +42,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "409":
-          description: Конфликт. Заявка с такими данными уже существует.
+          description: >
+            Конфликт. Заявка с такими данными уже существует, либо ключ идемпотентности
+            уже был использован ранее с другим телом запроса (см. errorCode).
           content:
             application/json:
               schema:
@@ -67,6 +75,7 @@ paths:
           schema:
             type: integer
             format: int64
+        - $ref: "#/components/parameters/AccessToken"
       responses:
         "200":
           description: Текущий статус заявки.
@@ -74,8 +83,168 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApplicationStatusResponse"
+        "403":
+          description: Access-Token отсутствует или не соответствует данной заявке.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Заявка с указанным идентификатором не найдена.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Слишком много запросов. Пожалуйста, попробуйте позже.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Внутренняя ошибка сервера.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Сервис недоступен.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /application/{applicationId}/additional-info:
+    post:
+      tags:
+        - Onboarding
+      operationId: submitAdditionalInfo
+      summary: Донесение клиентом текстовых данных, запрошенных по заявке
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/AccessToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplicationAdditionalInfoRequest"
+      responses:
+        "202":
+          description: Данные приняты. Обработка заявки может занять некоторое время.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationStatusResponse"
+        "400":
+          description: Невалидные данные в запросе, либо переданы поля, не входящие в список запрошенных.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Access-Token отсутствует или не соответствует данной заявке.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Заявка с указанным идентификатором не найдена.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: >
+            Заявка не находится в статусе ADDITIONAL_INFO_REQUIRED (либо истёк срок
+            предоставления данных), либо ключ идемпотентности уже был использован ранее
+            с другим телом запроса (см. errorCode).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Внутренняя ошибка сервера.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Сервис недоступен.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /application/{applicationId}/documents:
+    post:
+      tags:
+        - Onboarding
+      operationId: submitAdditionalDocuments
+      summary: Донесение клиентом документов, запрошенных по заявке в статусе ADDITIONAL_INFO_REQUIRED
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/AccessToken"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/ApplicationDocumentsRequest"
+      responses:
+        "202":
+          description: Документы приняты. Обработка заявки может занять некоторое время.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationStatusResponse"
+        "400":
+          description: Невалидные данные в запросе, либо переданы документы, не входящие в список запрошенных.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Access-Token отсутствует или не соответствует данной заявке.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Заявка с указанным идентификатором не найдена.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: >
+            Заявка не находится в статусе ADDITIONAL_INFO_REQUIRED (либо истёк срок
+            предоставления данных), либо ключ идемпотентности уже был использован ранее
+            с другим телом запроса (см. errorCode).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Внутренняя ошибка сервера.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Сервис недоступен.
           content:
             application/json:
               schema:
@@ -86,7 +255,7 @@ paths:
       tags:
         - Onboarding
       operationId: approveApplication
-      summary: Решение менеджера по заявке в статусе MANUAL_REVIEW
+      summary: Решение менеджера по заявке в статусе MANUAL_REVIEW (одобрение)
       parameters:
         - name: applicationId
           in: path
@@ -94,6 +263,7 @@ paths:
           schema:
             type: integer
             format: int64
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -107,6 +277,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApplicationStatusResponse"
+        "401":
+          description: Неавторизованный доступ. Требуется аутентификация.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Доступ запрещён. У пользователя нет прав на выполнение данного действия.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Заявка с указанным идентификатором не найдена.
           content:
@@ -114,11 +296,158 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "409":
-          description: Заявка не находится в статусе MANUAL_REVIEW.
+          description: >
+            Заявка не находится в статусе MANUAL_REVIEW, либо ключ идемпотентности уже
+            был использован ранее с другим телом запроса (см. errorCode).
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Внутренняя ошибка сервера.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Сервис недоступен.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /application/{applicationId}/request-additional-info:
+    post:
+      tags:
+        - Onboarding
+      operationId: requestAdditionalInfo
+      summary: Решение менеджера по заявке в статусе MANUAL_REVIEW (запрос донесения данных/документов у клиента)
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplicationRequestAdditionalInfoRequest"
+      responses:
+        "200":
+          description: Запрос зафиксирован, статус заявки обновлён на ADDITIONAL_INFO_REQUIRED.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationStatusResponse"
+        "401":
+          description: Неавторизованный доступ. Требуется аутентификация.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Доступ запрещён. У пользователя нет прав на выполнение данного действия.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Заявка с указанным идентификатором не найдена.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: >
+            Заявка не находится в статусе MANUAL_REVIEW, либо ключ идемпотентности уже
+            был использован ранее с другим телом запроса (см. errorCode).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Внутренняя ошибка сервера.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Сервис недоступен.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /application/{applicationId}/reject:
+    post:
+      tags:
+        - Onboarding
+      operationId: rejectApplication
+      summary: Решение менеджера по заявке в статусе MANUAL_REVIEW (отклонение)
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplicationRejectRequest"
+      responses:
+        "200":
+          description: Решение принято, статус заявки обновлён на REJECTED.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationStatusResponse"
+        "401":
+          description: Неавторизованный доступ. Требуется аутентификация.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Доступ запрещён. У пользователя нет прав на выполнение данного действия.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Заявка с указанным идентификатором не найдена.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: >
+            Заявка не находится в статусе MANUAL_REVIEW, либо ключ идемпотентности уже
+            был использован ранее с другим телом запроса (см. errorCode).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Внутренняя ошибка сервера.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Сервис недоступен.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     ApplicationCreateRequest:
@@ -131,6 +460,8 @@ components:
         - dateOfBirth
         - passportSeries
         - passportNumber
+        - dateOfPassportIssuance
+        - issuedBy
         - registrationAddress
         - residentialAddress
         - snils
@@ -172,6 +503,14 @@ components:
           type: string
           minLength: 1
           maxLength: 200
+        dateOfPassportIssuance:
+          type: string
+          format: date
+          description: "Дата выдачи паспорта"
+        issuedBy:
+          type: string
+          minLength: 1
+          maxLength: 200
         residentialAddress:
           type: string
           minLength: 1
@@ -191,23 +530,82 @@ components:
           format: binary
           description: "Фотография клиента (JPEG/PNG, максимум 10MB)"
 
-    202ApplicationResponse:
+    ApplicationAdditionalInfoRequest:
       type: object
+      description: "Донесение текстовых полей, запрошенных менеджером/системой через requestedFields. Хотя бы одно поле обязательно; поля, не входившие в список запрошенных, отклоняются — проверяется на уровне бизнес-логики. Необхоимые поля для подсвечиваются в интерфейсе клиента"
       properties:
-        applicationId:
-          type: integer
-          format: int64
-          description: Уникальный идентификатор заявки на открытие счета
-        message:
+        firstName:
           type: string
-          description: Сообщение о том, что заявка принята и находится в обработке
-        status:
+          minLength: 1
+          maxLength: 50
+        middleName:
           type: string
-          enum: [CREATED, PENDING, APPROVED, REJECTED, MANUAL_REVIEW, COMPLETED]
-          description: Текущий статус заявки
+          minLength: 1
+          maxLength: 50
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 50
+        email:
+          type: string
+          format: email
+          maxLength: 100
+        phoneNumber:
+          type: string
+          pattern: '^\+7\d{10}$'
+          description: "Номер телефона в формате E.164 (например, +79161234567)"
+        dateOfBirth:
+          type: string
+          format: date
+          description: "Клиент должен быть совершеннолетним — проверяется на уровне бизнес-логики"
+        passportSeries:
+          type: string
+          pattern: '^\d{4}$'
+        passportNumber:
+          type: string
+          pattern: '^\d{6}$'
+        registrationAddress:
+          type: string
+          minLength: 1
+          maxLength: 200
+        dateOfPassportIssuance:
+          type: string
+          format: date
+          description: "Дата выдачи паспорта"
+        issuedBy:
+          type: string
+          minLength: 1
+          maxLength: 200
+        residentialAddress:
+          type: string
+          minLength: 1
+          maxLength: 200
+        snils:
+          type: string
+          pattern: '^\d{11}$'
+        inn:
+          type: string
+          pattern: '^\d{12}$'
+
+    ApplicationDocumentsRequest:
+      type: object
+      description: "Донесение документов, запрошенных менеджером/системой через requestedDocuments. Хотя бы один документ обязателен; документы, не входившие в список запрошенных, отклоняются — проверяется на уровне бизнес-логики"
+      properties:
+        passportScan:
+          type: string
+          format: binary
+          description: "Скан паспорта (JPEG/PNG/PDF, максимум 10MB)"
+        photoApplicant:
+          type: string
+          format: binary
+          description: "Фотография клиента (JPEG/PNG, максимум 10MB)"
 
     ApplicationStatusResponse:
       type: object
+      required:
+        - applicationId
+        - status
+        - createdAt
       properties:
         applicationId:
           type: integer
@@ -215,17 +613,170 @@ components:
           description: Уникальный идентификатор заявки на открытие счета
         status:
           type: string
-          enum: [CREATED, PENDING, APPROVED, REJECTED, MANUAL_REVIEW, COMPLETED]
+          enum:
+            [
+              PENDING,
+              MANUAL_REVIEW,
+              ADDITIONAL_INFO_REQUIRED,
+              APPROVED,
+              REJECTED,
+              EXPIRED,
+            ]
           description: Текущий статус заявки
+        createdAt:
+          type: string
+          format: date-time
+          description: Время создания заявки
+        updatedAt:
+          type: string
+          format: date-time
+          description: Время последнего обновления статуса заявки (может быть null, если статус не менялся с момента создания)
+        additionalInfoDeadline:
+          type: string
+          format: date-time
+          description: "Крайний срок предоставления запрошенных данных/документов. Указывается только при status = ADDITIONAL_INFO_REQUIRED, иначе заявка автоматически переводится в EXPIRED"
+
+    ApplicationCreateResponse:
+      description: >
+        Ответ на POST /application. Расширяет ApplicationStatusResponse полем accessToken,
+        которое в других ответах не повторяется — см. ADR-005.
+      allOf:
+        - $ref: "#/components/schemas/ApplicationStatusResponse"
+        - type: object
+          required:
+            - accessToken
+          properties:
+            accessToken:
+              type: string
+              minLength: 32
+              description: >
+                Секрет для последующих клиентских вызовов по этой заявке (GET .../status,
+                POST .../additional-info, POST .../documents), передаётся заголовком Access-Token.
+                Выдаётся один раз, здесь и только здесь; клиент обязан сохранить его самостоятельно —
+                сервер не хранит его в открытом виде и повторно не возвращает. См. ADR-005.
+              example: "a3f9c1e2b4d6f8091a2b3c4d5e6f70813c2e9b4a7d1f0325e6c8b9a4d2f1e30"
 
     ApplicationApproveRequest:
       type: object
       required:
         - changedBy
+        - status
+        - reasonCode
       properties:
         changedBy:
           type: string
           description: Идентификатор менеджера, принявшего решение
+        status:
+          type: string
+          enum: [APPROVED]
+          description: Статус заявки
+        reasonCode:
+          type: string
+          enum:
+            [
+              DOCUMENTS_VERIFIED_MANUALLY,
+              DATA_DISCREPANCY_RESOLVED,
+              FALSE_POSITIVE_LIST_MATCH,
+              BORDERLINE_RISK_ACCEPTED,
+              OTHER,
+            ]
+          description: Код причины одобрения заявки менеджером (обязательное поле)
+        reasonMessage:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: "Причина одобрения в свободной форме. Обязательно, если reasonCode = OTHER — проверяется на уровне бизнес-логики"
+
+    ApplicationRequestAdditionalInfoRequest:
+      type: object
+      required:
+        - changedBy
+        - status
+        - reasonCode
+      properties:
+        changedBy:
+          type: string
+          description: Идентификатор менеджера, принявшего решение
+        status:
+          type: string
+          enum: [ADDITIONAL_INFO_REQUIRED]
+          description: Статус заявки
+        reasonCode:
+          type: string
+          enum:
+            [
+              ILLEGIBLE_PHOTOGRAPH,
+              ILLEGIBLE_SCANNED_COPY_OF_THE_DOCUMENT,
+              INVALID_DATA,
+              DATA_DISCREPANCY,
+              DOCUMENT_EXPIRED,
+              OTHER,
+            ]
+          description: Код причины запроса дополнительной информации у клиента (обязательное поле)
+        reasonMessage:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: "Причина запроса в свободной форме. Обязательно, если reasonCode = OTHER — проверяется на уровне бизнес-логики"
+        requestedFields:
+          type: array
+          items:
+            type: string
+            enum:
+              [
+                firstName,
+                middleName,
+                lastName,
+                email,
+                phoneNumber,
+                dateOfBirth,
+                passportSeries,
+                passportNumber,
+                dateOfPassportIssuance,
+                issuedBy,
+                registrationAddress,
+                residentialAddress,
+                snils,
+                inn,
+              ]
+          description: "Текстовые поля, которые клиенту нужно предоставить заново. Хотя бы одно из requestedFields/requestedDocuments обязательно — проверяется на уровне бизнес-логики"
+        requestedDocuments:
+          type: array
+          items:
+            type: string
+            enum: [passportScan, photoApplicant]
+          description: "Документы, которые клиенту нужно загрузить заново. Хотя бы одно из requestedFields/requestedDocuments обязательно — проверяется на уровне бизнес-логики"
+
+    ApplicationRejectRequest:
+      type: object
+      required:
+        - changedBy
+        - status
+        - reasonCode
+      properties:
+        changedBy:
+          type: string
+          description: Идентификатор менеджера, принявшего решение
+        status:
+          type: string
+          enum: [REJECTED]
+          description: Статус заявки
+        reasonCode:
+          type: string
+          enum:
+            [
+              INSUFFICIENT_DOCUMENTS,
+              INVALID_DATA,
+              ILLEGIBLE_PHOTOGRAPH,
+              ILLEGIBLE_SCANNED_COPY_OF_THE_DOCUMENT,
+              OTHER,
+            ]
+          description: Код причины отклонения заявки (обязательное поле)
+        reasonMessage:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: "Причина отклонения в свободной форме. Обязательно, если reasonCode = OTHER — проверяется на уровне бизнес-логики"
 
     ErrorResponse:
       type: object
@@ -248,3 +799,31 @@ components:
         requestId:
           type: string
           description: Уникальный идентификатор запроса, полезный для трассировки и отладки
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-key
+      in: header
+      required: true
+      description: >
+        Уникальный идентификатор запроса, задаваемый клиентом (UUID). При повторной
+        отправке запроса с тем же ключом и тем же телом сервер не повторяет обработку
+        и возвращает исходный сохранённый ответ. Если с тем же ключом приходит запрос
+        с другим телом — возвращается 409.
+      schema:
+        type: string
+        format: uuid
+        example: "550e8400-e29b-41d4-a716-446655440000"
+    AccessToken:
+      name: Access-Token
+      in: header
+      required: true
+      description: >
+        Секрет, выданный клиенту один раз в ответе POST /application (поле accessToken,
+        см. ApplicationCreateResponse) и подтверждающий, что запрос по данному applicationId
+        делает тот же клиент, который создал заявку. Непрозрачная случайная строка, не JWT —
+        расшифровывать в ней нечего. Хранится на стороне клиента и передаётся на всех
+        последующих клиентских вызовах по этой заявке. См. ADR-005.
+      schema:
+        type: string
+        minLength: 32
+        example: "a3f9c1e2b4d6f8091a2b3c4d5e6f70813c2e9b4a7d1f0325e6c8b9a4d2f1e30"

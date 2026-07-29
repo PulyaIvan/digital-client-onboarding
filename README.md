@@ -46,6 +46,9 @@
 
 - [ADR-001: Асинхронная обработка KYC-проверки](decisions/adr-001-async-kyc-processing.md)
 - [ADR-002: Идемпотентное создание счёта в Core Banking](decisions/adr-002-idempotent-account-creation.md)
+- [ADR-003: Донесение дополнительных данных по заявке (без черновика/корзины)](decisions/adr-003-additional-info-request-flow.md)
+- [ADR-004: Idempotency-Key на входящих POST-запросах](decisions/adr-004-idempotency-key-header.md)
+- [ADR-005: Access-Token для клиентских эндпоинтов](decisions/adr-005-access-token-client-endpoints.md)
 
 ## Диаграммы
 

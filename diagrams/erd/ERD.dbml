@@ -25,6 +25,8 @@ Table applicant_sensitive_data {
   applicant_id int [ref: - applicant.applicant_id, unique]
   passport_number_encrypted varchar // зашифровано
   passport_series_encrypted varchar // зашифровано
+  date_of_passport_issuance_encrypted varchar [note: 'дата выдачи паспорта'] // зашифровано
+  issued_by_encrypted varchar [note: 'орган, выдавший паспорт'] // зашифровано
   registred_address_encrypted varchar // зашифровано
   residential_address_encrypted varchar [note: 'фактический адрес проживания']
   same_as_registration boolean [note: 'совпадает ли фактический адрес с пропиской']
@@ -37,9 +39,14 @@ Table application {
   application_id int [pk, increment]
   applicant_id int [ref: > applicant.applicant_id]
   application_number varchar(20) [unique]
-  status enum('CREATED', 'PENDING', 'APPROVED', 'REJECTED', 'MANUAL_REVIEW', 'COMPLETED')
+  status enum('CREATED', 'PENDING', 'APPROVED', 'REJECTED', 'MANUAL_REVIEW', 'ADDITIONAL_INFO_REQUIRED', 'EXPIRED', 'COMPLETED')
   applied_at timestamp
   updated_at timestamp
+  additional_info_deadline timestamp [note: 'заполняется только при status = ADDITIONAL_INFO_REQUIRED, иначе null']
+  requested_fields enum('first_name', 'middle_name', 'last_name', 'email', 'phone_number', 'date_of_birth', 'passport_series', 'passport_number', 'date_of_passport_issuance', 'issued_by', 'registration_address', 'residential_address', 'snils', 'inn')[] [note: 'чек-лист полей, запрошенных повторно; заполняется только при ADDITIONAL_INFO_REQUIRED. См. ADR-003']
+  requested_documents enum('passport', 'photo')[] [note: 'чек-лист документов, запрошенных повторно; заполняется только при ADDITIONAL_INFO_REQUIRED. См. ADR-003']
+  text_info_received boolean [note: 'true, если все requested_fields получены; сбрасывается при каждом новом ADDITIONAL_INFO_REQUIRED. См. ADR-003']
+  documents_received boolean [note: 'true, если все requested_documents получены; сбрасывается при каждом новом ADDITIONAL_INFO_REQUIRED. См. ADR-003']
 }
 
 Table debit_account {
@@ -56,7 +63,7 @@ Table debit_account {
 Table application_history {
   history_id int [pk, increment]
   application_id int [ref: > application.application_id]
-  status enum('CREATED', 'PENDING', 'APPROVED', 'REJECTED', 'MANUAL_REVIEW', 'COMPLETED')
+  status enum('CREATED', 'PENDING', 'APPROVED', 'REJECTED', 'MANUAL_REVIEW', 'ADDITIONAL_INFO_REQUIRED', 'EXPIRED', 'COMPLETED')
   changed_by varchar(50) [note: 'заполняется только для решений менеджера в MANUAL_REVIEW, для системных переходов — null']
   changed_at timestamp
 }

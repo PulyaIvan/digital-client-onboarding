@@ -1,6 +1,8 @@
 CREATE TYPE "doc_type_enum" AS ENUM ('passport', 'photo');
 
-CREATE TYPE "application_status_enum" AS ENUM ('CREATED', 'PENDING', 'APPROVED', 'REJECTED', 'MANUAL_REVIEW', 'COMPLETED');
+CREATE TYPE "application_field_enum" AS ENUM ('first_name', 'middle_name', 'last_name', 'email', 'phone_number', 'date_of_birth', 'passport_series', 'passport_number', 'date_of_passport_issuance', 'issued_by', 'registration_address', 'residential_address', 'snils', 'inn');
+
+CREATE TYPE "application_status_enum" AS ENUM ('CREATED', 'PENDING', 'APPROVED', 'REJECTED', 'MANUAL_REVIEW', 'ADDITIONAL_INFO_REQUIRED', 'EXPIRED', 'COMPLETED');
 
 CREATE TYPE "debit_account_status_enum" AS ENUM ('ACTIVE', 'CLOSED', 'BLOCKED');
 
@@ -37,6 +39,8 @@ CREATE TABLE "applicant_sensitive_data" (
   "applicant_id" int UNIQUE,
   "passport_number_encrypted" varchar,
   "passport_series_encrypted" varchar,
+  "date_of_passport_issuance_encrypted" varchar,
+  "issued_by_encrypted" varchar,
   "registred_address_encrypted" varchar,
   "residential_address_encrypted" varchar,
   "same_as_registration" boolean,
@@ -51,7 +55,12 @@ CREATE TABLE "application" (
   "application_number" varchar(20) UNIQUE,
   "status" "application_status_enum",
   "applied_at" timestamp,
-  "updated_at" timestamp
+  "updated_at" timestamp,
+  "additional_info_deadline" timestamp,
+  "requested_fields" "application_field_enum"[],
+  "requested_documents" "doc_type_enum"[],
+  "text_info_received" boolean,
+  "documents_received" boolean
 );
 
 CREATE TABLE "debit_account" (
@@ -93,11 +102,25 @@ CREATE TABLE "notification" (
 
 COMMENT ON COLUMN "applicant_documents"."storage_ref" IS 'ссылка на зашифрованное хранилище/vault';
 
+COMMENT ON COLUMN "applicant_sensitive_data"."date_of_passport_issuance_encrypted" IS 'дата выдачи паспорта';
+
+COMMENT ON COLUMN "applicant_sensitive_data"."issued_by_encrypted" IS 'орган, выдавший паспорт';
+
 COMMENT ON COLUMN "applicant_sensitive_data"."residential_address_encrypted" IS 'фактический адрес проживания';
 
 COMMENT ON COLUMN "applicant_sensitive_data"."same_as_registration" IS 'совпадает ли фактический адрес с пропиской';
 
 COMMENT ON COLUMN "application_history"."changed_by" IS 'заполняется только для решений менеджера в MANUAL_REVIEW, для системных переходов — null';
+
+COMMENT ON COLUMN "application"."additional_info_deadline" IS 'вычисляется как момент_перехода_в_ADDITIONAL_INFO_REQUIRED + TTL; заполняется только при status = ADDITIONAL_INFO_REQUIRED, иначе null. См. ADR-003';
+
+COMMENT ON COLUMN "application"."requested_fields" IS 'чек-лист текстовых полей, запрошенных менеджером повторно у клиента (соответствует requestedFields в POST /application/{id}/request-additional-info); заполняется только при status = ADDITIONAL_INFO_REQUIRED, иначе null. См. ADR-003';
+
+COMMENT ON COLUMN "application"."requested_documents" IS 'чек-лист документов, запрошенных менеджером повторно у клиента (соответствует requestedDocuments в POST /application/{id}/request-additional-info); заполняется только при status = ADDITIONAL_INFO_REQUIRED, иначе null. См. ADR-003';
+
+COMMENT ON COLUMN "application"."text_info_received" IS 'true, если клиент через POST /application/{id}/additional-info прислал все поля из requested_fields; сбрасывается в false при каждом новом переходе в ADDITIONAL_INFO_REQUIRED. Если requested_fields пуст — считается закрытым по умолчанию. См. ADR-003';
+
+COMMENT ON COLUMN "application"."documents_received" IS 'true, если клиент через POST /application/{id}/documents прислал все документы из requested_documents; сбрасывается в false при каждом новом переходе в ADDITIONAL_INFO_REQUIRED. Если requested_documents пуст — считается закрытым по умолчанию. См. ADR-003';
 
 ALTER TABLE "applicant_documents" ADD FOREIGN KEY ("applicant_id") REFERENCES "applicant" ("applicant_id") DEFERRABLE INITIALLY IMMEDIATE;
 
