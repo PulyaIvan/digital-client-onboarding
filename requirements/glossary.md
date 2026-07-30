@@ -13,5 +13,8 @@
 | Core Banking | Центральная система учёта счетов, балансов и транзакций банка; создаёт Debit_account после одобрения заявки |
 | Notification Service | Внутренний сервис, отправляющий клиенту уведомления (push/email/sms) о статусе заявки |
 | Kafka (Event Bus) | Брокер сообщений для асинхронного взаимодействия между Onboarding Service, Core Banking и Notification Service |
+| Access Token | Секрет, выдаваемый клиенту один раз при создании заявки, подтверждающий, что запрос по данному applicationId делает тот же клиент; передаётся заголовком Access-Token — см. [ADR-005](../decisions/adr-005-access-token-client-endpoints.md) |
+| Access Recovery | Восстановление доступа к заявке при утере Access Token — клиент подтверждает владение email через одноразовый код (OTP) и получает новый токен взамен утерянного — см. [ADR-006](../decisions/adr-006-access-recovery-otp.md) |
+| Application History | Полная история переходов статуса заявки (`application_history` в БД), включая кто принял решение (`changed_by`, только для решений менеджера) и когда; менеджеру доступна через поле `history` в `ApplicationDetailsResponse` |
 
 ## TODO — дополнить по мере проработки

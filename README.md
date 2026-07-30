@@ -36,7 +36,7 @@
 
 ## Требования
 
-- [Функциональные требования](requirements/functional.md) (FR-001 – FR-007)
+- [Функциональные требования](requirements/functional.md) (FR-001 – FR-009)
 - [Нефункциональные требования](requirements/non-functional.md)
 - [Use cases и user stories](requirements/use-cases.md)
 - [Глоссарий](requirements/glossary.md)
@@ -49,6 +49,8 @@
 - [ADR-003: Донесение дополнительных данных по заявке (без черновика/корзины)](decisions/adr-003-additional-info-request-flow.md)
 - [ADR-004: Idempotency-Key на входящих POST-запросах](decisions/adr-004-idempotency-key-header.md)
 - [ADR-005: Access-Token для клиентских эндпоинтов](decisions/adr-005-access-token-client-endpoints.md)
+- [ADR-006: Восстановление доступа к заявке через одноразовый код (OTP)](decisions/adr-006-access-recovery-otp.md)
+- [ADR-007: Версионирование API (URI-путь /v1)](decisions/adr-007-api-versioning.md)
 
 ## Диаграммы
 
@@ -64,4 +66,4 @@
 - [non-functional.md](requirements/non-functional.md) — throughput, раздельные latency-требования, шифрование ПДн
 - [glossary.md](requirements/glossary.md) — дополнение терминов
 - [traceability-matrix.md](requirements/traceability-matrix.md) — ссылки на конкретные файлы диаграмм
-- `api/openapi.yaml`, `database/schema.sql` — спецификации ещё не заполнены
+- `database/schema.sql`, `diagrams/` — отстают от `api/openapi.yaml`/ADR-004/005/006; конкретный список расхождений — [sync-debt.md](requirements/sync-debt.md)
