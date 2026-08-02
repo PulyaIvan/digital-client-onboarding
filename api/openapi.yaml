@@ -763,8 +763,13 @@ components:
               APPROVED,
               REJECTED,
               EXPIRED,
+              COMPLETED,
             ]
-          description: Текущий статус заявки
+          description: >
+            Текущий статус заявки. APPROVED — решение принято, счёт открывается асинхронно в
+            Core Banking; COMPLETED — счёт подтверждённо открыт (см. ADR-002). CREATED в этом
+            перечне намеренно нет — внутренний статус до отправки на KYC, клиент его не видит:
+            синхронный ответ POST /application уже возвращает PENDING.
         createdAt:
           type: string
           format: date-time
@@ -1034,11 +1039,10 @@ components:
               COMPLETED,
             ]
           description: >
-            Статус, в который перешла заявка на этом шаге. В отличие от
-            ApplicationStatusResponse.status (используется для live-опроса клиентом) здесь
-            перечислены все статусы из application_status_enum, включая внутренние CREATED
-            и COMPLETED — полная история не должна их скрывать. См. requirements/sync-debt.md
-            про соответствующий пробел в ApplicationStatusResponse.
+            Статус, в который перешла заявка на этом шаге. Перечислены все статусы из
+            application_status_enum, включая CREATED — единственный статус, которого нет в
+            ApplicationStatusResponse.status (используется для live-опроса клиентом): он
+            внутренний и клиенту никогда не возвращается, полная история его не скрывает.
         changedBy:
           type: [string, "null"]
           description: >

@@ -55,15 +55,14 @@
 ## Диаграммы
 
 - **C4:** [diagrams/c4/C4 Диаграмма.puml](diagrams/c4/C4%20Диаграмма.puml)
-- **ERD:** [diagrams/erd/schema.dbml](diagrams/erd/schema.dbml)
-- **Sequence:** happy path, manual review, reject — [diagrams/sequence/](diagrams/sequence/)
+- **ERD:** [diagrams/erd/ERD.dbml](diagrams/erd/ERD.dbml)
+- **Sequence:** happy path, manual review, reject, донесение данных клиентом, восстановление access-token — [diagrams/sequence/](diagrams/sequence/)
 - **State:** Application, Debit Account — [diagrams/state/](diagrams/state/)
 - **Экспорты (PNG):** [diagrams/exports/](diagrams/exports/)
 
 ## Статус
 
 Проект в стадии проработки требований. Открытые TODO:
-- [non-functional.md](requirements/non-functional.md) — throughput, раздельные latency-требования, шифрование ПДн
-- [glossary.md](requirements/glossary.md) — дополнение терминов
-- [traceability-matrix.md](requirements/traceability-matrix.md) — ссылки на конкретные файлы диаграмм
-- `database/schema.sql`, `diagrams/` — отстают от `api/openapi.yaml`/ADR-004/005/006; конкретный список расхождений — [sync-debt.md](requirements/sync-debt.md)
+- [non-functional.md](requirements/non-functional.md) — throughput, раздельные latency-требования, шифрование PII в Kafka-событиях (направление намечено, см. [sync-debt.md](requirements/sync-debt.md), формального ADR ещё нет)
+- Конкретные значения TTL/лимитов — `additionalInfoDeadline` и интервал батч-джоба (ADR-003), время жизни `idempotency_keys` (ADR-004), TTL и лимит попыток OTP-кода (ADR-006) — сами механизмы спроектированы, числа не зафиксированы
+- `diagrams/erd/ERD.dbdiagram` — пересобрать в редакторе drawdb под актуальный `ERD.dbml` (3 новые таблицы добавлены текстом, расстановка на холсте вручную)

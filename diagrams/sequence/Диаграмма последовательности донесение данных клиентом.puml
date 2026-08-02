@@ -1,0 +1,72 @@
+@startuml Донесение недостающих данных клиентом
+scale 2
+title Донесение недостающих данных клиентом(KYC/Менеджер запросил у клиента недостающие данные )
+
+actor "Клиент" as cl
+participant "Onboarding\nService" as svc
+database "Onboarding DB" as db_svc
+queue "Kafka" as bm
+participant "KYC\n(внешний)" as kyc
+
+note over cl, kyc
+    KYC/Менеджер запросил у клиента
+    донесение недостающих данных
+end note
+
+
+note over cl
+  Диаграмма показывает случай, когда запрошены и поля, и документы —
+  тогда клиент видит оба сразу на одном экране, одна кнопка "Отправить".
+  Если запрошено только одно из двух — уходит только соответствующий
+  запрос; чек-лист другой части пуст и уже считается закрытым.
+end note
+
+cl -> svc: POST /application/{id}/additional-info\nAccess-Token: <token>\n(запрошенные поля)
+activate svc
+svc -> svc: валидация (только поля из\nrequested_fields, иначе 400)
+svc -> db_svc: UPDATE Applicant / Applicant_sensitive_data\n(запрошенные поля)
+svc -> db_svc: UPDATE Application\ntext_info_received=true
+svc --> cl: 202 Accepted\nstatus=ADDITIONAL_INFO_REQUIRED
+deactivate svc
+
+cl -> svc: POST /application/{id}/documents\nAccess-Token: <token>\n(запрошенные документы, multipart)
+activate svc
+svc -> svc: валидация (только документы из\nrequested_documents, иначе 400)
+svc -> db_svc: INSERT Applicant_documents\n(storage_ref)
+svc -> db_svc: UPDATE Application\ndocuments_received=true
+svc --> cl: 202 Accepted\nstatus=ADDITIONAL_INFO_REQUIRED
+deactivate svc
+
+alt text_info_received AND documents_received\n(пустой чек-лист считается закрытым)
+
+  svc -> db_svc: UPDATE Application status=PENDING
+  svc ->> bm: publish "VERIFY_REQUESTED"\n{applicationId, applicant data, document refs}
+
+
+  bm ->> kyc: consume "VERIFY_REQUESTED"\n{applicationId, applicant data, document refs}
+  activate kyc
+  kyc -> kyc: повторная проверка личности,\nоценка риска
+  kyc -> bm: publish "VERIFICATION_COMPLETED"\n{applicationId, verdict=approved/rejected/manual_review}
+  deactivate kyc
+
+  bm ->> svc: consume "VERIFICATION_COMPLETED"
+  activate svc
+  svc -> db_svc: INSERT KYC_Result (verdict, reason_code, ...)
+  svc -> db_svc: UPDATE Application status=APPROVED/REJECTED/MANUAL_REVIEW
+  svc -> bm: publish "APPROVED"/"REJECTED"/"MANUAL_REVIEW"
+  deactivate svc
+
+  note over svc, kyc
+    Далее — идентично happy path или manual review path
+  end note
+else один из двух запросов не дошёл (обрыв сети)
+  note over svc
+    Оба запроса уходят одним действием пользователя,
+    но физически это два независимых HTTP-вызова — один мог не дойти.
+    Заявка остаётся в ADDITIONAL_INFO_REQUIRED, данные не теряются:
+    Idempotency-key позволяет безопасно повторить именно
+    недостающий запрос, когда клиент/приложение это обнаружит.
+  end note
+end
+
+@enduml

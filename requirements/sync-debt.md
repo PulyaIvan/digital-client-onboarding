@@ -2,73 +2,88 @@
 
 Зафиксировано по состоянию на ADR-004/005/006. Осознанный выбор: сначала полностью закрыть
 вопросы на уровне `api/openapi.yaml`/ADR, не отвлекаясь на `database/schema.sql` и
-`diagrams/`, и затем одним проходом свести их под уже стабилизировавшийся контракт — чтобы не
-перерисовывать диаграммы при каждой правке API. Этот файл — конкретный список того, что именно
-нужно будет свести, когда дойдёт очередь.
+`diagrams/`, и затем сводить их под уже стабилизировавшийся контракт частями, а не одним
+проходом. `database/schema.sql`/`ERD.dbml` закрыты 2026-08-02 (см. ниже); диаграммы
+(`diagrams/sequence/*.puml`) остаются открытым пунктом.
 
 ## database/schema.sql + diagrams/erd/ERD.dbml
 
-Три таблицы существуют только на уровне API-контракта, в БД/ERD не заведены:
-- `idempotency_keys` (key, request_hash, cached_response, created_at, expires_at) — ADR-004.
-- Хранение `accessToken` — ни колонки, ни отдельной таблицы нет; нужен хеш, а не открытый
-  текст (по аналогии с паролем) — ADR-005.
-- `access_recovery_code` (application_id, code_hash, expires_at, attempts, used_at) — ADR-006.
-
-Несоответствия в уже существующих таблицах:
-- `application_history.changed_by varchar(50)` — комментарий "заполняется только для решений
-  менеджера в MANUAL_REVIEW" описывает старую модель, где `changedBy` был полем в теле запроса
-  (`ApplicationApproveRequest`/`ApplicationRejectRequest`/`ApplicationRequestAdditionalInfoRequest`).
-  Это поле убрано из `api/openapi.yaml` — личность менеджера теперь должна браться из
-  `BearerAuth` (JWT), а не из тела запроса. Комментарий к колонке всё ещё описывает старый
-  источник значения.
-- `doc_type_enum('passport', 'photo')` — в API те же сущности называются
-  `passportScan`/`photoApplicant` (в т.ч. в новом `GET /application/{applicationId}/documents/{documentType}`).
-  Само по себе разное именование в API/БД — не проблема, но сопоставление `passport ↔
-  passportScan`, `photo ↔ photoApplicant` нигде явно не зафиксировано.
-- `application_status_enum` (БД/ERD) содержит `CREATED` и `COMPLETED`, которых нет в
-  `ApplicationStatusResponse.status` (`api/openapi.yaml`: `PENDING`, `MANUAL_REVIEW`,
-  `ADDITIONAL_INFO_REQUIRED`, `APPROVED`, `REJECTED`, `EXPIRED`). Отсутствие `CREATED` в API
-  оправдано (внутренний статус до отправки в KYC, клиент его не видит — синхронный ответ уже
-  возвращает `PENDING`). Отсутствие `COMPLETED` выглядит как реальный пробел, а не намеренное
-  решение: клиент, поллящий `GET /status`, в принципе никогда не увидит подтверждение, что счёт
-  открыт. Не связано с сегодняшними ADR — обнаружено при сверке, требует отдельного решения.
+Закрыто 2026-08-02: `idempotency_keys` (ADR-004), хранение `accessToken` (отдельная таблица
+`application_access_token`, а не колонки на `application` — секрет не должен быть в scope
+каждого запроса, читающего заявку, см. ADR-005 "Альтернативы", ADR-006), `access_recovery_code`
+(ADR-006) заведены в `database/schema.sql` и `diagrams/erd/ERD.dbml`. `application_history.changed_by`
+и `doc_type_enum` (переименован в `passportScan`/`photoApplicant`, синхронизирован с API) тоже
+поправлены. `COMPLETED` добавлен в `ApplicationStatusResponse.status` (`api/openapi.yaml`) —
+см. ADR-005/ADR-002 про семантику. `diagrams/erd/ERD.dbdiagram` (файл-состояние редактора
+drawdb с координатами таблиц) не тронут — его проще пересобрать из обновлённого `ERD.dbml`
+через сам редактор, чем править вручную.
 
 ## diagrams/sequence/*.puml
 
-- `Диаграмма последовательно онбординг клиента (happy path).puml`: `cl -> svc: POST /application`
-  не показывает заголовок `Idempotency-key`; `svc --> cl: 202 Accepted\nstatus=PENDING` не
-  показывает выдачу `accessToken` в ответе (ADR-004, ADR-005).
-- `Диаграмма последовательности(MANUAL_REVIEW).puml`: шаг
-  `mgr -> svc: POST /application/{id}/approve\n{changed_by: managerId}` устарел дважды —
-  (1) `changed_by` в теле запроса больше нет в API; (2) не показан обязательный теперь
-  `BearerAuth`. Отдельно (не сегодняшнее расхождение, а изначально неполное покрытие
-  сценария из ADR-003): в этой диаграмме нет ветки `request-additional-info`, только `approve`.
-- Ни одна из sequence-диаграмм пока не показывает вообще: `GET /application/{id}/status` +
-  `POST .../additional-info`/`POST .../documents` с `Access-Token`; новый
-  `GET /application/{applicationId}` (менеджер смотрит полные данные заявки);
-  `GET /application/{applicationId}/documents/{documentType}` (скачивание документа
-  менеджером); `POST .../access-recovery` + `.../confirm` (ADR-006).
+Закрыто 2026-08-02 (патч без новых диаграмм): `Диаграмма последовательно онбординг клиента
+(happy path).puml` теперь показывает `accessToken` в `202`-ответе (плюс
+`INSERT Application_access_token`, ADR-005). `Диаграмма последовательности(MANUAL_REVIEW).puml`:
+`changed_by` в теле `approve` заменён на `BearerAuth`; добавлена ветка `request-additional-info`
+(`alt`/`else`) с уведомлением клиента.
 
-## X-Correlation-Id (наблюдаемость)
+`Idempotency-key`/`X-Correlation-Id` сознательно **не** расписаны на каждой стрелке (закрыто и
+сразу упрощено 2026-08-02) — один `note` в начале каждой диаграммы поясняет, что оба заголовка
+есть на всех POST/всех эндпоинтах соответственно (ADR-004, non-functional.md), не влияют на
+последовательность и потому не дублируются построчно; `BearerAuth`/`accessToken` показаны
+явно — это не фон, а разные механизмы доверия для разных участников. Заодно на consume-стрелке
+`VERIFY_REQUESTED` в happy path повторён payload (`applicant data, document refs`) — без этого
+было неочевидно, что KYC получает данные внутри самого события, а не обращается за ними куда-то
+отдельно (event-carried state transfer).
 
-`api/openapi.yaml` теперь принимает необязательный заголовок `X-Correlation-Id` на всех
-эндпоинтах и возвращает его во всех ответах (см. [non-functional.md](non-functional.md)).
-Ни один sequence-диаграммы, ни один участник (Kafka event payload) этого пока не отражает —
-события в шинах публикуются только с `{applicationId, ...}`, без correlation id конкретного
-HTTP-вызова, инициировавшего цепочку. Дорисовать вместе с остальным пунктом sequence-диаграмм
-выше.
+Ещё не нарисовано нигде (сознательно отложено — решили патчить только 2 существующие диаграммы,
+не заводить новые; **новые диаграммы для этих сценариев рисует сам пользователь**, не Claude):
+- Донесение данных клиентом (`POST .../additional-info`/`POST .../documents` с `Access-Token`)
+  и автопереход в `EXPIRED` батч-джобом (ADR-003) — в MANUAL_REVIEW.puml оставлена заметка-ссылка
+  на будущую отдельную диаграмму.
+- `GET /application/{id}/status` с `Access-Token` (клиентский поллинг).
+- `POST .../access-recovery` + `.../confirm` (ADR-006).
 
-## GET /application (список) и history (FR-009)
+**Не пробел, а осознанный скоуп** (не добавлять в список выше): менеджерские
+`GET /application` (список), `GET /application/{applicationId}` (полные данные),
+`GET /application/{applicationId}/documents/{documentType}` (скачивание документа) — это
+read-only запросы внутри одного сервиса, без координации с другими системами. Sequence-диаграммы
+здесь документируют межсистемное взаимодействие, а не путь пользователя по экранам — тот же
+принцип, по которому в MANUAL_REVIEW.puml менеджерский UI уже помечен как "вне скоупа MVP,
+показан только как источник решения". Показывать сами `GET`-запросы так же избыточно, как
+рисовать, что клиент листает форму заявки.
 
-Новый `GET /application` (список заявок с фильтром по `status`, пагинация `limit`/`offset`) и
-новое поле `history` в `ApplicationDetailsResponse` (`ApplicationHistoryEntry[]`) — ни то, ни
-другое пока не в sequence-диаграммах (см. выше — общий список отсутствующих сценариев). Отдельно:
-`history` **не требует** новой таблицы в БД — данные уже есть в `application_history`
-(`database/schema.sql`), эндпоинт их просто ещё не читал. Единственное, что стоит иметь в виду:
-`ApplicationHistoryEntry.status` намеренно использует полный enum из 8 статусов (включая
-`CREATED`/`COMPLETED`), в отличие от 6-значного `ApplicationStatusResponse.status` — это разное
-назначение полей (полная история vs live-статус), не рассинхрон между ними, но подсвечивает уже
-описанный выше пробел с отсутствием `COMPLETED` в live-статусе ещё раз.
+## Чувствительные данные в Kafka-событии VERIFY_REQUESTED (найдено 2026-08-02, направление выбрано, не оформлено)
+
+Обнаружено при разборе `Диаграмма последовательно онбординг клиента (happy path).puml`: событие
+`VERIFY_REQUESTED` (`svc ->> bm`, публикуется в [[decisions/adr-001-async-kyc-processing.md]])
+несёт `applicant data` — не уточнено, входят ли туда поля из `Applicant_sensitive_data`
+(`passport_number`, `snils`, `inn`; в БД хранятся зашифрованными, см. `database/schema.sql`).
+`KYC` — внешний провайдер, событие в этот момент покидает периметр банка, поэтому вопрос не
+косметический.
+
+**Выбранное направление — ссылка на vault, по аналогии с `document refs`** (сканы уже так и
+устроены: в событие идёт только ссылка на объект в защищённом хранилище, не сами байты).
+Для текстовых чувствительных полей то же самое: событие несёт не значение, а ссылку; KYC
+забирает значение отдельным защищённым запросом — либо напрямую к vault (тот сам проверяет
+право KYC на эту конкретную запись), либо через узкий отдельный эндпоинт Onboarding Service,
+выставленный специально для KYC (не общий доступ к `Onboarding DB`). В обоих случаях
+database-per-service не нарушается — KYC никогда не видит саму `Onboarding DB`.
+
+Рассматривался и альтернативный вариант — шифровать поля публичным ключом KYC и слать значения
+прямо в событии (асимметричное шифрование) — не выбран, оставлен как альтернатива на будущее,
+если понадобится.
+
+Не оформлено как ADR и не спроектировано на уровне схемы/API — зафиксировано направление,
+детали (какой именно vault, формат ссылки) осознанно не прорабатываются сейчас.
+
+## history (FR-009)
+
+Новое поле `history` в `ApplicationDetailsResponse` (`ApplicationHistoryEntry[]`) **не требует**
+новой таблицы в БД — данные уже есть в `application_history` (`database/schema.sql`), эндпоинт
+их просто ещё не читал. `ApplicationHistoryEntry.status` использует полный enum из 8 статусов
+(включая `CREATED`), `ApplicationStatusResponse.status` — 7-значный (включая `COMPLETED`,
+добавлен 2026-08-02; без `CREATED`, он внутренний) — разное назначение полей (полная история vs
+live-статус), не рассинхрон.
 
 ## /v1 (версионирование, ADR-007)
 
@@ -81,6 +96,8 @@ sequence-диаграммы, ни `use-cases.md`/ADR-001–006 этот преф
 ## diagrams/state/*.puml
 
 - Диаграмма состояний `Application` авторизации не касается, расхождений с ADR-004/005/006 нет.
-  Единственное несовпадение — то же, что и в БД: `COMPLETED` есть на диаграмме, но не в
-  `ApplicationStatusResponse.status` API (см. выше) — общий пробел, не отдельная проблема
-  диаграммы.
+  `COMPLETED` на диаграмме и в `ApplicationStatusResponse.status` теперь совпадают (закрыто
+  2026-08-02, см. выше). Отдельно найдено и закрыто 2026-08-02 (дорисовано пользователем): не
+  хватало перехода `ADDITIONAL_INFO_REQUIRED → PENDING` (клиент донёс данные вовремя) — был
+  только `→ EXPIRED` (просрочка), успешный выход не был нарисован вообще. Сверено построчно с
+  моделью переходов ADR-003 — расхождений не осталось.

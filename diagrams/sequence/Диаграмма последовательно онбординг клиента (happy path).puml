@@ -12,19 +12,17 @@ database "Core Banking DB\n(Debit_account)" as db_bk
 participant "Notification\nService" as ns
 database "Notification DB\n(Notification)" as db_ns
 
-cl -> svc: POST /application (данные заявки)
+cl -> svc: POST /application\n(данные заявки)
 activate svc
 svc -> svc: валидация полей
-svc -> db_svc: INSERT Applicant
-svc -> db_svc: INSERT Applicant_sensitive_data\n(encrypted)
-svc -> db_svc: INSERT Applicant_documents\n(storage_ref, masked_value)
-svc -> db_svc: INSERT Application (status=CREATED)
+svc -> db_svc: сохранить заявку (status=CREATED)\n[Applicant, Applicant_sensitive_data (encrypted),\nApplicant_documents (storage_ref)]
 svc ->> bm: publish event "VERIFY_REQUESTED"\n{applicationId, applicant data, document refs}
 svc -> db_svc: UPDATE Application (status=PENDING)
-svc --> cl: 202 Accepted\nstatus=PENDING
+svc -> db_svc: INSERT Application_access_token\n(access_token_hash, issued_at)
+svc --> cl: 202 Accepted\nstatus=PENDING, accessToken=<token>
 deactivate svc
 
-bm ->> kyc: consume "VERIFY_REQUESTED"
+bm ->> kyc: consume "VERIFY_REQUESTED"\n{applicationId, applicant data, document refs}
 activate kyc
 kyc -> kyc: проверка личности,\nоценка риска
 kyc -> bm: publish event "VERIFICATION_COMPLETED"\n{applicationId, verdict=approved}

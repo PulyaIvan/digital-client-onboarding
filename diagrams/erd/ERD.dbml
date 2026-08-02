@@ -13,7 +13,7 @@ Table applicant {
 Table applicant_documents {
   applicant_documents_id int [pk, increment]
   applicant_id int [ref: > applicant.applicant_id]
-  doc_type enum('passport', 'photo')
+  doc_type enum('passportScan', 'photoApplicant')
   storage_ref varchar [note: 'ссылка на зашифрованное хранилище/vault']
   masked_value varchar
   verified boolean
@@ -44,7 +44,7 @@ Table application {
   updated_at timestamp
   additional_info_deadline timestamp [note: 'заполняется только при status = ADDITIONAL_INFO_REQUIRED, иначе null']
   requested_fields enum('first_name', 'middle_name', 'last_name', 'email', 'phone_number', 'date_of_birth', 'passport_series', 'passport_number', 'date_of_passport_issuance', 'issued_by', 'registration_address', 'residential_address', 'snils', 'inn')[] [note: 'чек-лист полей, запрошенных повторно; заполняется только при ADDITIONAL_INFO_REQUIRED. См. ADR-003']
-  requested_documents enum('passport', 'photo')[] [note: 'чек-лист документов, запрошенных повторно; заполняется только при ADDITIONAL_INFO_REQUIRED. См. ADR-003']
+  requested_documents enum('passportScan', 'photoApplicant')[] [note: 'чек-лист документов, запрошенных повторно; заполняется только при ADDITIONAL_INFO_REQUIRED. См. ADR-003']
   text_info_received boolean [note: 'true, если все requested_fields получены; сбрасывается при каждом новом ADDITIONAL_INFO_REQUIRED. См. ADR-003']
   documents_received boolean [note: 'true, если все requested_documents получены; сбрасывается при каждом новом ADDITIONAL_INFO_REQUIRED. См. ADR-003']
 }
@@ -64,7 +64,7 @@ Table application_history {
   history_id int [pk, increment]
   application_id int [ref: > application.application_id]
   status enum('CREATED', 'PENDING', 'APPROVED', 'REJECTED', 'MANUAL_REVIEW', 'ADDITIONAL_INFO_REQUIRED', 'EXPIRED', 'COMPLETED')
-  changed_by varchar(50) [note: 'заполняется только для решений менеджера в MANUAL_REVIEW, для системных переходов — null']
+  changed_by varchar(50) [note: 'идентификатор менеджера из BearerAuth (JWT), заполняется только для решений в MANUAL_REVIEW; для системных переходов — null']
   changed_at timestamp
 }
 
@@ -84,4 +84,34 @@ Table notification {
     status enum('PENDING', 'SENT')
     sent_at timestamp
     updated_at timestamp
+}
+
+Table idempotency_keys {
+  idempotency_key varchar(36) [pk, note: 'UUID от клиента, заголовок Idempotency-key']
+  request_hash varchar [note: 'хеш тела запроса, чтобы ловить 409 при несовпадении']
+  response_status int
+  response_body jsonb
+  created_at timestamp
+  expires_at timestamp
+
+  Note: 'Idempotency-key на входящих POST (все 6 эндпоинтов). Без FK на application — используется и в POST /application, где заявки ещё не существует. См. ADR-004'
+}
+
+Table access_recovery_code {
+  access_recovery_code_id int [pk, increment]
+  application_id int [ref: > application.application_id]
+  code_hash varchar
+  expires_at timestamp
+  attempts int
+  used_at timestamp
+
+  Note: 'Одноразовый код восстановления доступа (OTP по email). См. ADR-006'
+}
+
+Table application_access_token {
+  application_id int [pk, ref: - application.application_id, note: 'один активный токен на заявку, история версий не нужна']
+  access_token_hash varchar [note: 'хеш accessToken, действует весь жизненный цикл заявки']
+  issued_at timestamp [note: 'момент выдачи; перезаписывается при .../access-recovery/confirm, старый токен инвалидируется. См. ADR-006']
+
+  Note: 'Вынесено из application намеренно — секрет не должен быть доступен всем запросам, читающим заявку. См. ADR-005, ADR-006'
 }
