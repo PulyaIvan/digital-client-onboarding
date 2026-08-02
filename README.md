@@ -51,6 +51,7 @@
 - [ADR-005: Access-Token для клиентских эндпоинтов](decisions/adr-005-access-token-client-endpoints.md)
 - [ADR-006: Восстановление доступа к заявке через одноразовый код (OTP)](decisions/adr-006-access-recovery-otp.md)
 - [ADR-007: Версионирование API (URI-путь /v1)](decisions/adr-007-api-versioning.md)
+- [ADR-008: Чувствительные данные заявки не передаются в Kafka-событии VERIFY_REQUESTED](decisions/adr-008-pii-in-kafka-events.md)
 
 ## Диаграммы
 
@@ -63,6 +64,6 @@
 ## Статус
 
 Проект в стадии проработки требований. Открытые TODO:
-- [non-functional.md](requirements/non-functional.md) — throughput, раздельные latency-требования, шифрование PII в Kafka-событиях (направление намечено, см. [sync-debt.md](requirements/sync-debt.md), формального ADR ещё нет)
+- [non-functional.md](requirements/non-functional.md) — throughput, раздельные latency-требования; упоминание шифрования PII в Kafka там устарело после [ADR-008](decisions/adr-008-pii-in-kafka-events.md), нужно свести
 - Конкретные значения TTL/лимитов — `additionalInfoDeadline` и интервал батч-джоба (ADR-003), время жизни `idempotency_keys` (ADR-004), TTL и лимит попыток OTP-кода (ADR-006) — сами механизмы спроектированы, числа не зафиксированы
-- `diagrams/erd/ERD.dbdiagram` — пересобрать в редакторе drawdb под актуальный `ERD.dbml` (3 новые таблицы добавлены текстом, расстановка на холсте вручную)
+- `diagrams/erd/ERD.dbdiagram` — сознательно не поддерживается, схема хранится текстом (`ERD.dbml`) и экспортами в PNG

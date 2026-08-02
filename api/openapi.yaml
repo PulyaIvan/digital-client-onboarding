@@ -7,14 +7,22 @@ servers:
   - url: https://api.example.com
     description: Production server
 tags:
-  - name: Onboarding
-    description: Operations related to client onboarding
+  - name: Applications
+    description: "Основной жизненный цикл заявки: подача, поллинг статуса, список/детали для менеджера, решения менеджера (approve/reject/request-additional-info)"
+  - name: Additional Info
+    description: "Донесение клиентом данных/документов, запрошенных повторно (ADR-003) — ответ на request-additional-info из тега Applications"
+  - name: Documents
+    description: Работа с документами заявки (Applicant Document)
+  - name: Access Recovery
+    description: Восстановление доступа к заявке при утере Access-Token (ADR-006)
+  - name: KYC Integration
+    description: Интеграция с внешним KYC-провайдером (ADR-008)
 
 paths:
   /v1/application:
     post:
       tags:
-        - Onboarding
+        - Applications
       operationId: postApplication
       summary: Подача заявки на открытие счета
       parameters:
@@ -66,7 +74,7 @@ paths:
 
     get:
       tags:
-        - Onboarding
+        - Applications
       operationId: listApplications
       summary: Получить список заявок с фильтром по статусу (очередь на ручную проверку и т.п., только для менеджеров)
       security:
@@ -132,7 +140,7 @@ paths:
   /v1/application/{applicationId}:
     get:
       tags:
-        - Onboarding
+        - Applications
       operationId: getApplicationDetails
       summary: Получить полные данные заявки (только для менеджеров)
       security:
@@ -166,10 +174,52 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
+  /v1/internal/kyc-data/{applicationId}:
+    get:
+      tags:
+        - KYC Integration
+      operationId: getKycSensitiveData
+      summary: >
+        Чувствительные данные заявки для верификации — только для KYC-провайдера.
+        Событие VERIFY_REQUESTED (см. ADR-001) несёт только базовые данные (имя, email,
+        телефон, ссылки на документы) и applicationId; паспортные/адресные поля и
+        СНИЛС/ИНН по нему не передаются — KYC забирает их отдельным запросом сюда. См.
+        ADR-008.
+      security:
+        - KycServiceAuth: []
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Чувствительные данные заявки.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KycSensitiveDataResponse"
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/CorrelationId"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
   /v1/application/{applicationId}/request-additional-info:
     post:
       tags:
-        - Onboarding
+        - Applications
       operationId: requestAdditionalInfo
       summary: Решение менеджера по заявке в статусе MANUAL_REVIEW (запрос донесения данных/документов у клиента)
       security:
@@ -215,7 +265,7 @@ paths:
   /v1/application/{applicationId}/additional-info:
     post:
       tags:
-        - Onboarding
+        - Additional Info
       operationId: submitAdditionalInfo
       summary: Донесение клиентом текстовых данных, запрошенных по заявке
       security: [{ AccessTokenAuth: [] }]
@@ -267,7 +317,7 @@ paths:
   /v1/application/{applicationId}/documents:
     post:
       tags:
-        - Onboarding
+        - Additional Info
       operationId: submitAdditionalDocuments
       summary: Донесение клиентом документов, запрошенных по заявке в статусе ADDITIONAL_INFO_REQUIRED
       security:
@@ -320,7 +370,7 @@ paths:
   /v1/application/{applicationId}/documents/{documentType}:
     get:
       tags:
-        - Onboarding
+        - Documents
       operationId: getApplicationDocument
       summary: Скачать документ заявки (только для менеджеров)
       security:
@@ -371,7 +421,7 @@ paths:
   /v1/application/{applicationId}/access-recovery:
     post:
       tags:
-        - Onboarding
+        - Access Recovery
       operationId: requestAccessRecovery
       summary: Запросить одноразовый код для восстановления доступа к заявке (при утере accessToken)
       security: []
@@ -423,7 +473,7 @@ paths:
   /v1/application/{applicationId}/access-recovery/confirm:
     post:
       tags:
-        - Onboarding
+        - Access Recovery
       operationId: confirmAccessRecovery
       summary: Подтвердить одноразовый код и получить новый accessToken взамен утерянного
       security: []
@@ -466,7 +516,7 @@ paths:
   /v1/application/{applicationId}/status:
     get:
       tags:
-        - Onboarding
+        - Applications
       operationId: getApplicationStatus
       summary: Получить текущий статус заявки
       security:
@@ -503,7 +553,7 @@ paths:
   /v1/application/{applicationId}/approve:
     post:
       tags:
-        - Onboarding
+        - Applications
       operationId: approveApplication
       summary: Решение менеджера по заявке в статусе MANUAL_REVIEW (одобрение)
       security:
@@ -549,7 +599,7 @@ paths:
   /v1/application/{applicationId}/reject:
     post:
       tags:
-        - Onboarding
+        - Applications
       operationId: rejectApplication
       summary: Решение менеджера по заявке в статусе MANUAL_REVIEW (отклонение)
       security:
@@ -965,6 +1015,41 @@ components:
           minLength: 1
           maxLength: 500
           description: "Причина отклонения в свободной форме. Обязательно, если reasonCode = OTHER — проверяется на уровне бизнес-логики"
+    KycSensitiveDataResponse:
+      type: object
+      description: >
+        Только поля, отсутствующие в событии VERIFY_REQUESTED (Applicant_sensitive_data
+        в database/schema.sql, расшифрованные для KYC). Базовые данные (имя, email,
+        телефон) и ссылки на документы уже есть в самом событии — не дублируются здесь.
+        См. ADR-008.
+      required:
+        - passportSeries
+        - passportNumber
+        - dateOfPassportIssuance
+        - issuedBy
+        - registrationAddress
+        - residentialAddress
+        - snils
+        - inn
+      properties:
+        passportSeries:
+          type: string
+        passportNumber:
+          type: string
+        dateOfPassportIssuance:
+          type: string
+          format: date
+        issuedBy:
+          type: string
+        registrationAddress:
+          type: string
+        residentialAddress:
+          type: string
+        snils:
+          type: string
+        inn:
+          type: string
+
     ApplicationDetailsResponse:
       type: object
       allOf:
@@ -1215,6 +1300,15 @@ components:
       type: apiKey
       in: header
       name: Access-Token
+    KycServiceAuth:
+      description: >
+        Отдельная, более строгая аутентификация для внешнего KYC-провайдера (mTLS или
+        выданный вручную сервисный сертификат/ключ — конкретный механизм не зафиксирован,
+        см. ADR-008 "Открытые вопросы"). Не BearerAuth менеджера и не AccessTokenAuth
+        клиента — KYC не клиент и не менеджер, это единственный внешний потребитель
+        данного эндпоинта.
+      type: http
+      scheme: bearer
   parameters:
     IdempotencyKey:
       name: Idempotency-key

@@ -16,14 +16,23 @@ cl -> svc: POST /application\n(данные заявки)
 activate svc
 svc -> svc: валидация полей
 svc -> db_svc: сохранить заявку (status=CREATED)\n[Applicant, Applicant_sensitive_data (encrypted),\nApplicant_documents (storage_ref)]
-svc ->> bm: publish event "VERIFY_REQUESTED"\n{applicationId, applicant data, document refs}
+svc ->> bm: publish event "VERIFY_REQUESTED"\n{applicationId, базовые данные анкеты, document refs}
 svc -> db_svc: UPDATE Application (status=PENDING)
 svc -> db_svc: INSERT Application_access_token\n(access_token_hash, issued_at)
 svc --> cl: 202 Accepted\nstatus=PENDING, accessToken=<token>
 deactivate svc
 
-bm ->> kyc: consume "VERIFY_REQUESTED"\n{applicationId, applicant data, document refs}
+bm ->> kyc: consume "VERIFY_REQUESTED"\n{applicationId, базовые данные анкеты, document refs}
 activate kyc
+kyc -> svc: GET /internal/kyc-data/{applicationId}\nKycServiceAuth
+activate svc
+svc -> db_svc: SELECT Applicant_sensitive_data\nWHERE applicant_id = ?
+svc --> kyc: паспорт, СНИЛС, ИНН, адреса\n(расшифрованные)
+deactivate svc
+note over kyc, svc
+  Паспортные данные/СНИЛС/ИНН не летят в самом событии —
+  отдельный узкий запрос, а не вещание в общую шину. См. ADR-008
+end note
 kyc -> kyc: проверка личности,\nоценка риска
 kyc -> bm: publish event "VERIFICATION_COMPLETED"\n{applicationId, verdict=approved}
 deactivate kyc
