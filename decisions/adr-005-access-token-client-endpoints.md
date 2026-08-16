@@ -1,7 +1,7 @@
 # ADR-005: Access-Token для клиентских эндпоинтов
 
 ## Контекст
-В [[adr-003]] (раздел "Открытые вопросы") зафиксирован пробел: у клиентских эндпоинтов
+В [ADR-003](adr-003-additional-info-request-flow.md) (раздел "Открытые вопросы") зафиксирован пробел: у клиентских эндпоинтов
 (`POST /application`, `GET /application/{id}/status`, `POST /application/{id}/additional-info`,
 `POST /application/{id}/documents`) нет `securityScheme`, единственный "ключ" — числовой
 `applicationId` (`int64`, вероятно последовательный автоинкремент). Личного кабинета у клиента

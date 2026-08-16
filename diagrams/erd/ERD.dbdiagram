@@ -1,0 +1,81 @@
+{
+  "version": "2.0.0",
+  "darkMode": true,
+  "gridEnabling": false,
+  "currentViewName": null,
+  "defaultView": {
+    "detailLevel": "All",
+    "tablePositions": [
+      {
+        "name": "applicant",
+        "schemaName": "public",
+        "x": 381.84375,
+        "y": 12
+      },
+      {
+        "name": "applicant_documents",
+        "schemaName": "public",
+        "x": 867.39599609375,
+        "y": 12
+      },
+      {
+        "name": "applicant_sensitive_data",
+        "schemaName": "public",
+        "x": 867.39599609375,
+        "y": 314
+      },
+      {
+        "name": "application",
+        "schemaName": "public",
+        "x": 867.39599609375,
+        "y": 776
+      },
+      {
+        "name": "debit_account",
+        "schemaName": "public",
+        "x": 2552.619140625,
+        "y": 12
+      },
+      {
+        "name": "application_history",
+        "schemaName": "public",
+        "x": 2552.619140625,
+        "y": 314
+      },
+      {
+        "name": "kyc_result",
+        "schemaName": "public",
+        "x": 2552.619140625,
+        "y": 552
+      },
+      {
+        "name": "notification",
+        "schemaName": "public",
+        "x": 2552.619140625,
+        "y": 790
+      },
+      {
+        "name": "idempotency_keys",
+        "schemaName": "public",
+        "x": 369.78762084976125,
+        "y": 440.8345101748139
+      },
+      {
+        "name": "access_recovery_code",
+        "schemaName": "public",
+        "x": 2552.619140625,
+        "y": 1092
+      },
+      {
+        "name": "application_access_token",
+        "schemaName": "public",
+        "x": 2552.619140625,
+        "y": 1362
+      }
+    ],
+    "tableGroupCollapseStates": [],
+    "stickyNoteLayouts": [],
+    "referencePaths": []
+  },
+  "views": {}
+}

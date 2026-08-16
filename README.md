@@ -30,9 +30,9 @@
 | [business/](business/) | Бизнес-цели и контекст проекта |
 | [requirements/](requirements/) | Функциональные и нефункциональные требования, use cases, глоссарий, матрица трассируемости |
 | [decisions/](decisions/) | ADR — архитектурные решения и их обоснование |
-| [diagrams/](diagrams/) | C4, BPMN, ERD, sequence и state-диаграммы (исходники `.puml`/`.dbml` и экспорты в `exports/`) |
-| [api/](api/) | OpenAPI-спецификация (в разработке) |
-| [database/](database/) | Схема БД (в разработке) |
+| [diagrams/](diagrams/) | C4, ERD, sequence и state-диаграммы (исходники `.puml`/`.dbml` и экспорты в `exports/`) |
+| [api/](api/) | OpenAPI-спецификация |
+| [database/](database/) | Схема БД |
 
 ## Требования
 
@@ -63,7 +63,14 @@
 
 ## Статус
 
-Проект в стадии проработки требований. Открытые TODO:
-- [non-functional.md](requirements/non-functional.md) — throughput, раздельные latency-требования; упоминание шифрования PII в Kafka там устарело после [ADR-008](decisions/adr-008-pii-in-kafka-events.md), нужно свести
-- Конкретные значения TTL/лимитов — `additionalInfoDeadline` и интервал батч-джоба (ADR-003), время жизни `idempotency_keys` (ADR-004), TTL и лимит попыток OTP-кода (ADR-006) — сами механизмы спроектированы, числа не зафиксированы
-- `diagrams/erd/ERD.dbdiagram` — сознательно не поддерживается, схема хранится текстом (`ERD.dbml`) и экспортами в PNG
+Требования, API, схема БД, диаграммы и ADR проработаны и синхронизированы между собой — см. [Матрицу трассируемости](requirements/traceability-matrix.md).
+
+Осознанно не зафиксировано на уровне конкретных чисел (сам механизм спроектирован, вопрос НФТ, не архитектуры):
+- `additionalInfoDeadline` и интервал батч-джоба ([ADR-003](decisions/adr-003-additional-info-request-flow.md))
+- время жизни `idempotency_keys` ([ADR-004](decisions/adr-004-idempotency-key-header.md))
+- TTL и лимит попыток OTP-кода ([ADR-006](decisions/adr-006-access-recovery-otp.md))
+
+Осознанно вне скоупа пет-проекта (обоснование — в разделах «Альтернативы»/«Открытые вопросы» соответствующего ADR):
+- второй канал доставки OTP (SMS) — [ADR-006](decisions/adr-006-access-recovery-otp.md)
+- конкретный механизм аутентификации KYC-провайдера и аудит-логирование обращений к нему — [ADR-008](decisions/adr-008-pii-in-kafka-events.md)
+- deprecation policy для будущего `/v2` — [ADR-007](decisions/adr-007-api-versioning.md)

@@ -96,10 +96,11 @@
 - Конкретное значение TTL (`additionalInfoDeadline`) и интервал опроса батч-джоба не
   зафиксированы — вопрос уровня нефункциональных требований, не архитектуры.
 - Защита клиентских эндпоинтов (идемпотентность входящих POST, доступ по `applicationId`) —
-  решена в [[adr-004]] (Idempotency-key) и [[adr-005]] (Access-Token, `applicationId` осознанно
+  решена в [ADR-004](adr-004-idempotency-key-header.md) (Idempotency-key) и [ADR-005](adr-005-access-token-client-endpoints.md) (Access-Token, `applicationId` осознанно
   остаётся `int64`, см. её "Альтернативы"). Серверное хранение ключей/токена — тоже сделано,
   `idempotency_keys`/`application_access_token` в `database/schema.sql`.
 - Аутентификация менеджерских эндпоинтов (`approve`/`reject`/`request-additional-info`) —
   сделана, `BearerAuth`/JWT задан в `api/openapi.yaml`. Трассировка — заголовок
-  `X-Correlation-Id` тоже уже в контракте; диаграммы это пока не отражают, см.
-  `requirements/sync-debt.md`.
+  `X-Correlation-Id` тоже уже в контракте (см. `#/components/parameters/CorrelationId`,
+  присутствует на всех операциях); на sequence-диаграммах сознательно не показан на каждой
+  стрелке — заголовок не влияет на порядок и участников взаимодействия, только на логи.

@@ -1,7 +1,7 @@
 # ADR-008: Чувствительные данные заявки не передаются в Kafka-событии VERIFY_REQUESTED
 
 ## Контекст
-Событие `VERIFY_REQUESTED` (публикуется `Onboarding Service`, см. [[adr-001]]) несёт данные,
+Событие `VERIFY_REQUESTED` (публикуется `Onboarding Service`, см. [ADR-001](adr-001-async-kyc-processing.md)) несёт данные,
 нужные `KYC` (внешнему провайдеру) для верификации личности — `applicationId`, базовые данные
 анкеты и ссылки на документы. При разборе диаграммы обнаружено: формулировка `applicant data`
 не уточняла, входят ли туда поля из `Applicant_sensitive_data` (`passport_number`, `snils`,
